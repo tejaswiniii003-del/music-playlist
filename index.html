@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>loop. — Music Playlist Manager</title>
+  <style>
+    :root {
+      --bg-main: #0b0d13;
+      --bg-card: #12151e;
+      --bg-row: #181c27;
+      --bg-row-hover: #1e2330;
+      --bg-active-row: #232b19;
+      --border-card: #1f2433;
+      --border-input: #262c3d;
+      --lime: #a3e635;
+      --lime-hover: #bef264;
+      --lime-border: #84cc16;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --text-dim: #6b7280;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 28px;
+    }
+
+    /* Top Brand Header */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #a3e635, #65a30d);
+      color: #0b0d13;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .brand-title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+    }
+
+    .brand-sub {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .toast {
+      font-size: 12px;
+      color: var(--lime);
+      background: rgba(163, 230, 53, 0.1);
+      border: 1px solid rgba(163, 230, 53, 0.3);
+      padding: 6px 14px;
+      border-radius: 999px;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    /* Main 2-Column Layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.38fr 1fr;
+      gap: 20px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .left-col {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 0;
+    }
+
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .playlist-card {
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* Side-by-Side Bottom Row for Add & Remove */
+    .bottom-actions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      flex-shrink: 0;
+    }
+
+    .action-card {
+      justify-content: space-between;
+    }
+
+    .now-playing-card {
+      height: 100%;
+      justify-content: space-between;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .pill {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: #1b202e;
+      border: 1px solid #282f42;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    /* Search / Jump Bar */
+    .command-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+
+    input {
+      background: #0d1017;
+      border: 1px solid var(--border-input);
+      color: var(--text-main);
+      padding: 9px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.15s;
+    }
+
+    input:focus {
+      border-color: var(--lime);
+    }
+
+    .btn {
+      background: #1c2130;
+      color: var(--text-main);
+      border: 1px solid #2a3146;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .btn:hover {
+      background: #252b3d;
+    }
+
+    .btn-lime {
+      background: var(--lime);
+      color: #0b0d13;
+      border-color: var(--lime);
+      font-weight: 700;
+    }
+
+    .btn-lime:hover {
+      background: var(--lime-hover);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+      font-weight: 700;
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.22);
+      border-color: var(--danger);
+      color: #fecaca;
+    }
+
+    /* Playlist Scrollable Area */
+    .song-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-right: 4px;
+    }
+
+    .song-list::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .song-list::-webkit-scrollbar-thumb {
+      background: #262c3d;
+      border-radius: 999px;
+    }
+
+    .song-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-row);
+            border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 9px 12px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .song-row:hover {
+      background: var(--bg-row-hover);
+    }
+
+    .song-row.active {
+      background: var(--bg-active-row);
+      border-color: var(--lime-border);
+    }
+
+    .song-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .song-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      color: #0b0d13;
+      flex-shrink: 0;
+    }
+
+    .song-meta {
+      min-width: 0;
+    }
+
+    .song-title {
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .song-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .song-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .song-duration {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+    }
+
+    .icon-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    /* Side-by-Side Forms */
+    .stack-form {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      flex: 1;
+      justify-content: space-between;
+    }
+
+    .fields-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .field-group label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .helper-note {
+      font-size: 11px;
+      color: var(--text-dim);
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+
+    .form-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    .next-id-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Right Column: Now Playing */
+    .cover-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin: 4px 0;
+    }
+
+    .album-art {
+      width: 155px;
+      height: 155px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, #4d7c0f 0%, #a3e635 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 54px;
+      color: #0b0d13;
+      margin-bottom: 14px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .now-title {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .now-artist {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    /* Progress Bar */
+    .progress-wrap {
+      margin: 10px 0;
+    }
+
+    .progress-times {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-bar {
+      height: 4px;
+      background: #232838;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 35%;
+      background: var(--lime);
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    /* Transport Controls */
+    .transport {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin: 8px 0;
+    }
+
+    .circle-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #1c2130;
+      border: 1px solid #282f42;
+      color: var(--text-main);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .circle-btn:hover {
+      background: #262d40;
+    }
+
+    .play-main-btn {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: var(--lime);
+      border: none;
+      color: #0b0d13;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.12s, background 0.15s;
+    }
+
+    .play-main-btn:hover {
+      background: var(--lime-hover);
+      transform: scale(1.04);
+    }
+
+    /* Stats Boxes */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .stat-box {
+      background: #171b26;
+      border: 1px solid #222838;
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    /* Bottom Controls inside Now Playing */
+    .now-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .empty-msg {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 13px;
+      padding: 28px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-logo">♫</div>
+      <div>
+        <div class="brand-title">loop.</div>
+        <div class="brand-sub">MUSIC PLAYLIST MANAGER</div>
+      </div>
+    </div>
+    <div id="toast" class="toast"></div>
+  </header>
+
+  <!-- Main Content Grid -->
+  <main class="main-grid">
+
+    <!-- Left Column: Playlist + Side-by-Side Add & Remove Cards -->
+    <div class="left-col">
+
+      <!-- Your Playlist Card -->
+      <section class="card playlist-card">
+        <div class="card-header">
+          <h2 class="card-title">Your playlist</h2>
+          <span class="pill" id="playlistCountBadge">0 songs</span>
+        </div>
+
+        <!-- Search / Direct Play Bar -->
+        <div class="command-bar">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Search by song title or ID..."
+            autocomplete="off"
+          />
+          <button class="btn" id="jumpBtn" title="Move directly to song by ID or title">Play</button>
+          <button class="btn" id="clearSearchBtn">Clear</button>
+        </div>
+
+        <!-- Song Rows Container -->
+        <div class="song-list" id="songListContainer"></div>
+      </section>
+
+      <!-- Bottom Side-by-Side Cards: Add a Song | Remove a Song -->
+      <div class="bottom-actions-grid">
+
+        <!-- Left Sub-Card: Add a song -->
+        <section class="card action-card">
+          <div class="card-header">
+            <h2 class="card-title">Add a song</h2>
+            <span class="pill" id="nextOrderBadge">Next: S105</span>
+          </div>
+
+          <form id="addSongForm" class="stack-form">
+            <div class="fields-stack">
+              <div class="field-group">
+                <label for="titleInput">Song title</label>
+                <input type="text" id="titleInput" placeholder="Enter song title" required />
+              </div>
+              <div class="field-group">
+                <label for="artistInput">Artist / singer</label>
+                <input type="text" id="artistInput" placeholder="Enter artist name" required />
+              </div>
+            </div>
+            <div class="form-footer">
+              <span class="next-id-hint">ID assigned by order</span>
+              <button type="submit" class="btn btn-lime">+ Add song</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Right Sub-Card: Remove a song -->
+        <section class="card action-card">
+          <div class="card-header">
+            <h2 class="card-title">Remove a song</h2>
+          </div>
+
+          <form id="removeSongForm" class="stack-form">
+            <div class="fields-stack">
+              <div class="field-group">
+                <label for="removeQueryInput">Song ID or song title</label>
+                <input
+                  type="text"
+                  id="removeQueryInput"
+                  placeholder="e.g. S102 or Sunflower"
+                  required
+                />
+              </div>
+              <p class="helper-note">
+                Enter the song's order ID (e.g. S101) or title to remove it from the playlist.
+              </p>
+            </div>
+            <div class="form-footer" style="justify-content: flex-end;">
+              <button type="submit" class="btn btn-danger">✕ Remove song</button>
+            </div>
+          </form>
+        </section>
+
+      </div>
+
+    </div>
+
+    <!-- Right Column: Now Playing Card -->
+    <section class="card now-playing-card">
+      <div class="card-header">
+        <h2 class="card-title">Now playing</h2>
+        <span class="pill" id="playStateBadge">PAUSED</span>
+      </div>
+
+      <div class="cover-wrap">
+        <div class="album-art" id="nowCover">♫</div>
+        <div class="now-title" id="nowTitle">No song selected</div>
+        <div class="now-artist" id="nowArtist">—</div>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-times">
+          <span id="currentTimeLabel">00:00</span>
+          <span id="totalDurationLabel">00:00</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <div class="transport">
+        <button class="circle-btn" id="prevBtn" title="Previous song">⏮</button>
+        <button class="play-main-btn" id="playPauseBtn" title="Play / Pause">▶</button>
+        <button class="circle-btn" id="nextBtn" title="Next song">⏭</button>
+      </div>
+
+      <div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-label">SONG ID</div>
+            <div class="stat-value" id="statId">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">DURATION</div>
+            <div class="stat-value" id="statDuration">00:00</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">PLAYLIST</div>
+            <div class="stat-value" id="statTotal">0 tracks</div>
+          </div>
+        </div>
+
+        <div class="now-actions">
+          <button class="btn" id="repeatLoopBtn" title="Repeat playlist from last song back to first">↻ Repeat: On</button>
+          <button class="btn btn-danger" id="removeCurrentBtn">✕ Remove current</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+  <script>
+    /* =====================================================================
+     * DATA STRUCTURE IMPLEMENTATION: DOUBLY CIRCULAR LINKED LIST
+     * Equivalent to C++:
+     * struct Song {
+     *     string id, title, artist, duration, color;
+     *     Song* next;
+     *     Song* prev;
+     * };
+     * ===================================================================== */
+
+    class Song {
+      constructor(id, title, artist, duration, color) {
+        this.id = id;
+        this.title = title.trim();
+        this.artist = artist.trim();
+        this.duration = duration;
+        this.color = color;
+        this.next = null; // Pointer to next song in circular list
+        this.prev = null; // Pointer to previous song in circular list
+      }
+    }
+
+    class CircularPlaylist {
+      constructor() {
+        this.head = null;
+        this.tail = null;
+        this.current = null;
+        this.size = 0;
+        this.isPlaying = false;
+      }
+
+      // Helper: Format sequential order number into S101, S102, S103...
+      formatOrderId(orderIndex) {
+        return `S${100 + orderIndex}`;
+      }
+
+      // Helper: Generate a realistic mm:ss duration from title & artist when not provided
+      generateDuration(title, artist) {
+        let sum = 0;
+        const combined = title + artist;
+        for (let i = 0; i < combined.length; i++) {
+          sum += combined.charCodeAt(i);
+        }
+        const mins = 2 + (sum % 3); // 2 to 4 minutes
+        const secs = (sum * 7) % 60;
+        return `0${mins}:${secs < 10 ? "0" + secs : secs}`;
+      }
+
+      // Traverse the circular linked list to keep Song IDs strictly in order (S101, S102...)
+      resequenceOrderIds() {
+        if (!this.head) return;
+        const palette = ["#84cc16", "#818cf8", "#e879f9", "#fb7185", "#38bdf8", "#fbbf24"];
+        let ptr = this.head;
+        let order = 1;
+        do {
+          ptr.id = this.formatOrderId(order);
+          ptr.color = palette[(order - 1) % palette.length];
+          order++;
+          ptr = ptr.next;
+        } while (ptr !== this.head);
+      }
+
+      // 1. Add a new song to the playlist (ID assigned automatically by order)
+      addSong(title, artist, customDuration = null) {
+        const orderNumber = this.size + 1;
+        const autoId = this.formatOrderId(orderNumber);
+        const duration = customDuration || this.generateDuration(title, artist);
+        const palette = ["#84cc16", "#818cf8", "#e879f9", "#fb7185", "#38bdf8", "#fbbf24"];
+        const color = palette[(orderNumber - 1) % palette.length];
+
+        const newSong = new Song(autoId, title, artist, duration, color);
+
+        if (!this.head) {
+          this.head = newSong;
+          this.tail = newSong;
+          newSong.next = newSong;
+          newSong.prev = newSong;
+          this.current = newSong;
+        } else {
+          newSong.prev = this.tail;
+          newSong.next = this.head;
+          this.tail.next = newSong;
+          this.head.prev = newSong;
+          this.tail = newSong;
+        }
+
+        this.size++;
+        return { ok: true, song: newSong, message: `Added "${newSong.title}" as ${newSong.id}.` };
+      }
+
+      // Helper: Search song by ID (e.g. "S102" or "2") or Title (e.g. "Sunflower")
+      findSong(query) {
+        if (!this.head || !query) return null;
+        const q = query.trim().toLowerCase();
+        const numericOrderId = /^\d+$/.test(q) ? `s${100 + parseInt(q, 10)}` : null;
+
+        let temp = this.head;
+        do {
+          if (
+            temp.id.toLowerCase() === q ||
+            (numericOrderId && temp.id.toLowerCase() === numericOrderId) ||
+            temp.title.toLowerCase() === q
+          ) {
+            return temp;
+          }
+          temp = temp.next;
+        } while (temp !== this.head);
+        return null;
+      }
+
+      // 2. Remove a song using its song ID or title, then re-order remaining IDs
+      removeSong(query) {
+        const target = this.findSong(query);
+        if (!target) {
+          return { ok: false, message: `No song found matching "${query}".` };
+        }
+
+        const removedTitle = target.title;
+        const removedId = target.id;
+
+        if (this.size === 1) {
+          this.head = null;
+          this.tail = null;
+          this.current = null;
+          this.isPlaying = false;
+        } else {
+          target.prev.next = target.next;
+          target.next.prev = target.prev;
+
+          if (target === this.head) {
+            this.head = target.next;
+          }
+          if (target === this.tail) {
+            this.tail = target.prev;
+          }
+          if (target === this.current) {
+            this.current = target.next;
+          }
+        }
+
+        this.size--;
+        this.resequenceOrderIds();
+        return { ok: true, message: `Removed "${removedTitle}" (${removedId}).` };
+      }
+
+      // 3. Play or select the next song (circular wrap from tail -> head)
+      playNext() {
+        if (!this.current) return null;
+        const wrapped = (this.current === this.tail);
+        this.current = this.current.next;
+        return { song: this.current, wrapped };
+      }
+
+      // 4. Play or select the previous song (circular wrap from head -> tail)
+      playPrev() {
+        if (!this.current) return null;
+        const wrapped = (this.current === this.head);
+        this.current = this.current.prev;
+        return { song: this.current, wrapped };
+      }
+
+      // 5. Move directly to a song by searching for its title or ID
+      selectByQuery(query) {
+        const target = this.findSong(query);
+        if (!target) return null;
+        this.current = target;
+        this.isPlaying = true;
+        return target;
+      }
+
+      // 6. Repeat playlist by moving from last song back to first song
+      restartFromFirst() {
+        if (!this.head) return null;
+        this.current = this.head;
+        this.isPlaying = true;
+        return this.current;
+      }
+    }
+    /* =====================================================================
+     * UI CONTROLLER
+     * ===================================================================== */
+
+    const playlist = new CircularPlaylist();
+
+    // Seed initial 4 songs in order (S101 to S104)
+    playlist.addSong("Midnight City", "M83", "04:03");
+    playlist.addSong("Sunflower", "Post Malone, Swae Lee", "02:38");
+    playlist.addSong("Ilahi", "Arijit Singh", "03:48");
+    playlist.addSong("A Sky Full of Stars", "Coldplay", "04:27");
+
+    const songListContainer = document.getElementById("songListContainer");
+    const playlistCountBadge = document.getElementById("playlistCountBadge");
+    const nextOrderBadge = document.getElementById("nextOrderBadge");
+    const playStateBadge = document.getElementById("playStateBadge");
+    const nowTitle = document.getElementById("nowTitle");
+    const nowArtist = document.getElementById("nowArtist");
+    const currentTimeLabel = document.getElementById("currentTimeLabel");
+    const totalDurationLabel = document.getElementById("totalDurationLabel");
+    const progressFill = document.getElementById("progressFill");
+    const playPauseBtn = document.getElementById("playPauseBtn");
+    const statId = document.getElementById("statId");
+    const statDuration = document.getElementById("statDuration");
+    const statTotal = document.getElementById("statTotal");
+    const searchInput = document.getElementById("searchInput");
+    const toastEl = document.getElementById("toast");
+
+    let toastTimeout = null;
+
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add("show");
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => toastEl.classList.remove("show"), 2400);
+    }
+
+    function renderUI(filterText = "") {
+      songListContainer.innerHTML = "";
+      const query = filterText.trim().toLowerCase();
+
+      playlistCountBadge.textContent = `${playlist.size} ${playlist.size === 1 ? "song" : "songs"}`;
+      statTotal.textContent = `${playlist.size} ${playlist.size === 1 ? "track" : "tracks"}`;
+      nextOrderBadge.textContent = `Next: ${playlist.formatOrderId(playlist.size + 1)}`;
+
+      if (!playlist.head) {
+        songListContainer.innerHTML = `<div class="empty-msg">Your playlist is empty. Add a song below.</div>`;
+        nowTitle.textContent = "No song selected";
+        nowArtist.textContent = "—";
+        totalDurationLabel.textContent = "00:00";
+        currentTimeLabel.textContent = "00:00";
+        progressFill.style.width = "0%";
+        statId.textContent = "—";
+        statDuration.textContent = "00:00";
+        playStateBadge.textContent = "PAUSED";
+        playPauseBtn.textContent = "▶";
+        return;
+      }
+
+      // Traverse the Circular Linked List from head
+      let ptr = playlist.head;
+      let matchCount = 0;
+
+      do {
+        const matchesFilter =
+          !query ||
+          ptr.id.toLowerCase().includes(query) ||
+          ptr.title.toLowerCase().includes(query) ||
+          ptr.artist.toLowerCase().includes(query);
+
+        if (matchesFilter) {
+          matchCount++;
+          const isCurrent = (ptr === playlist.current);
+          const row = document.createElement("div");
+          row.className = `song-row ${isCurrent ? "active" : ""}`;
+
+          const songId = ptr.id;
+          row.innerHTML = `
+            <div class="song-left">
+              <div class="song-icon" style="background: ${ptr.color}">♫</div>
+              <div class="song-meta">
+                <div class="song-title">${ptr.title}</div>
+                <div class="song-sub">${ptr.artist} · ${ptr.id}</div>
+              </div>
+            </div>
+            <div class="song-right">
+              <span class="song-duration">${ptr.duration}</span>
+              <button class="icon-btn play-row-btn" title="Play song">▶</button>
+              <button class="icon-btn remove-row-btn" title="Remove song">✕</button>
+            </div>
+          `;
+
+          row.addEventListener("click", (e) => {
+            if (e.target.classList.contains("remove-row-btn")) return;
+            playlist.selectByQuery(songId);
+            renderUI(searchInput.value);
+          });
+
+          row.querySelector(".remove-row-btn").addEventListener("click", (e) => {
+            e.stopPropagation();
+            const res = playlist.removeSong(songId);
+            showToast(res.message);
+            renderUI(searchInput.value);
+          });
+
+          songListContainer.appendChild(row);
+        }
+
+        ptr = ptr.next;
+      } while (ptr !== playlist.head);
+
+      if (matchCount === 0) {
+        songListContainer.innerHTML = `<div class="empty-msg">No matching songs found.</div>`;
+      }
+
+      // Update Right-Hand "Now Playing" Panel
+      if (playlist.current) {
+        nowTitle.textContent = playlist.current.title;
+        nowArtist.textContent = playlist.current.artist;
+        totalDurationLabel.textContent = playlist.current.duration;
+        currentTimeLabel.textContent = playlist.isPlaying ? "01:12" : "00:00";
+        progressFill.style.width = playlist.isPlaying ? "38%" : "0%";
+        statId.textContent = playlist.current.id;
+        statDuration.textContent = playlist.current.duration;
+        playStateBadge.textContent = playlist.isPlaying ? "PLAYING" : "PAUSED";
+        playPauseBtn.textContent = playlist.isPlaying ? "⏸" : "▶";
+      }
+    }
+
+    // Event: Add Song Form (Title + Artist only, ID assigned by order)
+    document.getElementById("addSongForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const title = document.getElementById("titleInput").value;
+      const artist = document.getElementById("artistInput").value;
+
+      const res = playlist.addSong(title, artist);
+      showToast(res.message);
+      if (res.ok) {
+        e.target.reset();
+        renderUI(searchInput.value);
+      }
+    });
+
+    // Event: Remove Song Form (By Order ID or Title)
+    document.getElementById("removeSongForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const query = document.getElementById("removeQueryInput").value;
+      const res = playlist.removeSong(query);
+      showToast(res.message);
+      if (res.ok) {
+        e.target.reset();
+        renderUI(searchInput.value);
+      }
+    });
+
+    // Event: Live Search Filter
+    searchInput.addEventListener("input", () => {
+      renderUI(searchInput.value);
+    });
+
+    // Event: Move directly to song by ID or Title ("Play" button in search bar)
+    document.getElementById("jumpBtn").addEventListener("click", () => {
+      const q = searchInput.value.trim();
+      if (!q) {
+        showToast("Enter a song ID or title to play.");
+        return;
+      }
+      const target = playlist.selectByQuery(q);
+      if (target) {
+        showToast(`Playing "${target.title}" (${target.id})`);
+        searchInput.value = "";
+        renderUI();
+      } else {
+        showToast(`Song "${q}" not found.`);
+      }
+    });
+
+    // Event: Clear Search
+    document.getElementById("clearSearchBtn").addEventListener("click", () => {
+      searchInput.value = "";
+      renderUI();
+    });
+
+    // Event: Play / Pause Toggle
+    playPauseBtn.addEventListener("click", () => {
+      if (!playlist.current) return;
+      playlist.isPlaying = !playlist.isPlaying;
+      renderUI(searchInput.value);
+    });
+
+    // Event: Next Song (Circular Wrap)
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      const res = playlist.playNext();
+      if (res) {
+        if (res.wrapped) showToast("Looped back to first song.");
+        renderUI(searchInput.value);
+      }
+    });
+
+    // Event: Previous Song (Circular Wrap)
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      const res = playlist.playPrev();
+      if (res) {
+        if (res.wrapped) showToast("Looped to last song.");
+        renderUI(searchInput.value);
+      }
+    });
+
+    // Event: Remove Currently Selected Song
+    document.getElementById("removeCurrentBtn").addEventListener("click", () => {
+      if (!playlist.current) return;
+      const res = playlist.removeSong(playlist.current.id);
+      showToast(res.message);
+      renderUI(searchInput.value);
+    });
+
+    // Event: Repeat / Loop to Start
+    document.getElementById("repeatLoopBtn").addEventListener("click", () => {
+      if (!playlist.head) return;
+      playlist.restartFromFirst();
+      showToast(`Restarted playlist from "${playlist.current.title}".`);
+      renderUI(searchInput.value);
+    });
+
+    // Initial Render
+    renderUI();
+  </script>
+</body>
+</html>
+       
